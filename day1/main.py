@@ -1,4 +1,5 @@
 # Day 1: Historian Hysteria
+from collections import Counter
 
 # Parsing
 first_list, second_list = [], []
@@ -20,11 +21,7 @@ print("Distance between lists :", distance)
 
 ## Part 2 : similarity
 first_set = set(first_list)
-occurrences = {}
-
-for second in second_list:
-	if second in first_set:
-		occurrences[second] = occurrences.get(second, 0) + 1
+occurrences = Counter(second_list)
 
 similarity = sum(first * occurrences.get(first, 0) for first in first_list)
 
