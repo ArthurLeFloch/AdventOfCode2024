@@ -8,7 +8,7 @@ with open('input.txt') as f:
 	input_lines = f.readlines()
 	
 	for line in input_lines:
-		numbers = line.split("   ")
+		numbers = line.split()
 		first_list.append(int(numbers[0]))
 		second_list.append(int(numbers[1]))
 
