@@ -20,9 +20,7 @@ distance = sum(abs(first - second) for first, second in zip(first_list, second_l
 print("Distance between lists :", distance)
 
 ## Part 2 : similarity
-first_set = set(first_list)
 occurrences = Counter(second_list)
-
 similarity = sum(first * occurrences.get(first, 0) for first in first_list)
 
 print("Similarity between lists :", similarity)
