@@ -21,6 +21,6 @@ print("Distance between lists :", distance)
 
 ## Part 2 : similarity
 occurrences = Counter(second_list)
-similarity = sum(first * occurrences.get(first, 0) for first in first_list)
+similarity = sum(first * occurrences[first] for first in first_list)
 
 print("Similarity between lists :", similarity)
