@@ -1,7 +1,7 @@
 all: main run
 
 main:
-	cc -Wall -g -o main main.c
+	cc -Wall -o main main.c
 
 run:
 	./main

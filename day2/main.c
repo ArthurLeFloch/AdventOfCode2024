@@ -77,7 +77,7 @@ int is_tolerated(struct tokens_t tokens)
     return 0;
 }
 
-int main(int argc, char *argv[])
+int main()
 {
     int fd = open("input.txt", O_RDONLY);
     if (fd == -1)
