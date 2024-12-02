@@ -10,9 +10,6 @@
 #define MAX_LINE_SIZE 128
 #define MAX_TOKENS 10
 
-char buffer[BUFFER_SIZE];
-char line_buffer[MAX_LINE_SIZE];
-
 struct tokens_t
 {
     int token[MAX_TOKENS];
@@ -70,8 +67,7 @@ int is_safe(struct tokens_t tokens, int ignored)
 
 int is_tolerated(struct tokens_t tokens)
 {
-    // Starts at -1 to consider all data first
-    for (int i = -1; i < tokens.count; i++)
+    for (int i = 0; i < tokens.count; i++)
         if (is_safe(tokens, i))
             return 1;
     return 0;
@@ -88,6 +84,9 @@ int main()
 
     int safe_count = 0;
     int tolerated_count = 0;
+
+    char buffer[BUFFER_SIZE];
+    char line_buffer[MAX_LINE_SIZE];
 
     ssize_t bytes;
     int last_byte = 0;
