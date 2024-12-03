@@ -36,16 +36,18 @@ fun firstPart(input: String): Long {
 
 // Without regex
 fun secondPart(input: String): Long {
+    // Avoid writing checks for out of bounds
+    // len("mul(111,111)") - len("mul(1,1)") = 4
+    val padded = input.plus(" ".repeat(4))
     var res: Long = 0
 
     var canCompute = true
 
-    val n = input.length
     // At least mul(1,1) which is 8 chars. "don't()" and "do()" are both below 8 chars
     var i = 0
-    while (i <= n - 8) {
+    while (i <= input.length - 8) { // In computations, we can check from i + 8 to i + 11
         val expectedNumberIndex = i + 4
-        if (input.startsWith("do()", i)) {
+        if (padded.startsWith("do()", i)) {
             canCompute = true
             i += 4
             continue
@@ -54,68 +56,65 @@ fun secondPart(input: String): Long {
             i++
             continue
         }
-        if (input.startsWith("don't()", i)) {
+        if (padded.startsWith("don't()", i)) {
             canCompute = false
             i += 7
             continue
         }
 
 
-        if (!input.startsWith("mul(", i)) {
+        if (!padded.startsWith("mul(", i)) {
             i++
             continue
         }
 
         // Here, there is still at least,1) to scan because i + 8 <= n
         // Even if there's only one digit, we will not get out of bounds
-        if (!input[expectedNumberIndex].isDigit()) {
+        if (!padded[expectedNumberIndex].isDigit()) {
             i = expectedNumberIndex
             continue
         }
-        var digits_count = 1
-        if (input[expectedNumberIndex + 1].isDigit()) {
-            digits_count++
-            if (input[expectedNumberIndex + 2].isDigit()) {
-                digits_count++
+        var digitsCount = 1
+        if (padded[expectedNumberIndex + 1].isDigit()) {
+            digitsCount++
+            if (padded[expectedNumberIndex + 2].isDigit()) {
+                digitsCount++
             }
         }
 
-        val expectedCommaIndex = expectedNumberIndex + digits_count
+        val expectedCommaIndex = expectedNumberIndex + digitsCount
 
-        if (input[expectedCommaIndex] != ',') {
+        if (padded[expectedCommaIndex] != ',') {
             i = expectedCommaIndex
             continue
         }
 
-        val a = input.substring(expectedNumberIndex, expectedCommaIndex).toInt()
+        val a = padded.substring(expectedNumberIndex, expectedCommaIndex).toInt()
 
         val expectedSecondNumberIndex = expectedCommaIndex + 1
-        if (expectedSecondNumberIndex == n) break
-        if (!input[expectedSecondNumberIndex].isDigit()) {
+        if (!padded[expectedSecondNumberIndex].isDigit()) {
             i = expectedSecondNumberIndex
             continue
         }
-        digits_count = 1
+        digitsCount = 1
         // Check that there is at least two characters left (number and closing parenthesis)
-        if (expectedSecondNumberIndex + 1 == n) break
-        if (input[expectedSecondNumberIndex + 1].isDigit()) {
-            digits_count++
+        if (padded[expectedSecondNumberIndex + 1].isDigit()) {
+            digitsCount++
 
-            if (input[expectedSecondNumberIndex + 2].isDigit() and (expectedSecondNumberIndex + 2 != n)) {
-                digits_count++
+            if (padded[expectedSecondNumberIndex + 2].isDigit()) {
+                digitsCount++
             }
         }
 
-        val b = input.substring(expectedSecondNumberIndex, expectedSecondNumberIndex + digits_count).toInt()
+        val b = padded.substring(expectedSecondNumberIndex, expectedSecondNumberIndex + digitsCount).toInt()
 
-        if (expectedSecondNumberIndex + digits_count == n) break
-        if (input[expectedSecondNumberIndex + digits_count] != ')') {
-            i = expectedSecondNumberIndex + digits_count
+        if (padded[expectedSecondNumberIndex + digitsCount] != ')') {
+            i = expectedSecondNumberIndex + digitsCount
             continue
         }
 
         res += a * b
-        i = expectedSecondNumberIndex + digits_count + 1
+        i = expectedSecondNumberIndex + digitsCount + 1
     }
 
     return res
@@ -124,8 +123,7 @@ fun secondPart(input: String): Long {
 fun main() {
     val content = readFile()
     val first = firstPart(content)
-    println("Result: $first")
+    println("Result with all multiplications: $first")
     val second = secondPart(content)
-    println("Result: $second")
-
+    println("Result with only enabled multiplications: $second")
 }
