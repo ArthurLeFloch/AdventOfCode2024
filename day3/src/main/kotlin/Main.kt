@@ -3,38 +3,17 @@ package com.alfloch.aoc2024
 
 import java.io.File
 
-fun readFile(inputFilePath: String = "src/main/resources/input.txt"): String {
-    val inputStream = File(inputFilePath).inputStream()
-    val reader = inputStream.bufferedReader()
-
-    // Syntax to close the reader at the end of the block, and return the result of the lambda
-    return reader.use { it.readText() }
-}
-
-fun parseText(input: String): List<Pair<Int, Int>> {
-    // Two groups of 1 to 3 digits separated by a comma
-    val pattern = Regex("mul\\((\\d{1,3}),(\\d{1,3})\\)")
-    val matches = pattern.findAll(input)
-    val res = mutableListOf<Pair<Int, Int>>()
-    for (match in matches) {
-        val a = match.groupValues[1].toInt()
-        val b = match.groupValues[2].toInt()
-        res.add(Pair(a, b))
-    }
-    return res
-}
-
 // Using regular expressions
 fun firstPart(input: String): Long {
-    val pairs = parseText(input)
-    var res: Long = 0
-    for (pair in pairs) {
-        res += pair.first * pair.second
-    }
-    return res
+    val pattern = Regex("mul\\((\\d{1,3}),(\\d{1,3})\\)")
+    return pattern.findAll(input).map {
+        it.groupValues[1].toInt() * it.groupValues[2].toInt() * 1L
+    }.sum()
 }
 
 // Without regex
+// Less readable than using regex, but ~5 times faster on the given input
+// Possible with regex because pattern.findAll finds the next match iteratively
 fun secondPart(input: String): Long {
     // Avoid writing checks for out of bounds
     // len("mul(111,111)") - len("mul(1,1)") = 4
@@ -121,7 +100,7 @@ fun secondPart(input: String): Long {
 }
 
 fun main() {
-    val content = readFile()
+    val content = File("src/main/resources/input.txt").readText()
     val first = firstPart(content)
     println("Result with all multiplications: $first")
     val second = secondPart(content)
