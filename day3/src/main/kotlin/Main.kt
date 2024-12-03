@@ -45,7 +45,7 @@ fun secondPart(input: String): Long {
 
     // At least mul(1,1) which is 8 chars. "don't()" and "do()" are both below 8 chars
     var i = 0
-    while (i <= input.length - 8) { // In computations, we can check from i + 8 to i + 11
+    while (i <= input.length - 8) {
         val expectedNumberIndex = i + 4
         if (padded.startsWith("do()", i)) {
             canCompute = true
