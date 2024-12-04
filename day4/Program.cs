@@ -1,33 +1,27 @@
 ﻿// Day 4: Ceres Search
 
-static List<string> GetPaddedInput(string word, char pad)
+static string[] GetStringTable(string filePath)
 {
-    int paddingSize = word.Length - 1;
-    StreamReader reader = new("input.txt");
+    StreamReader reader = new(filePath);
+    return reader.ReadToEnd().Trim().Split('\n');
+}
 
-    // Padding to avoid checking boundaries too often
+static List<string> PadStringTable(string[] table, char pad, int amount)
+{
     List<string> output = [];
 
-    string line = reader.ReadLine();
-    int lineLength = line.Length;
+    string linePadding = new(pad, table[0].Length + 2 * amount);
+    string sidePadding = new(pad, amount);
 
-    string padding = new(pad, lineLength + 2 * paddingSize);
-    string sidePadding = new(pad, paddingSize);
-    for (int i = 0; i < paddingSize; i++)
-        output.Add(padding);
-
-    do
-    {
+    for (int i = 0; i < amount; i++)
+        output.Add(linePadding);
+    foreach (string line in table)
         output.Add(sidePadding + line + sidePadding);
-    } while ((line = reader.ReadLine()) != null);
-
-    for (int i = 0; i < paddingSize; i++)
-        output.Add(padding);
+    for (int i = 0; i < amount; i++)
+        output.Add(linePadding);
 
     return output;
 }
-
-Console.WriteLine("Hello, World!");
 
 static int CountFromLetter(string word, List<string> padded, int i, int j)
 {
@@ -39,6 +33,8 @@ static int CountFromLetter(string word, List<string> padded, int i, int j)
         {
             if (v == 0 && h == 0) continue;
             bool full = true;
+            if (padded.Any(l => l.Length <= j + h * (word.Length - 1) || l.Length <= i + v * (word.Length - 1)))
+                continue;
             for (int index = 0; index < word.Length; index++)
                 if (padded[i + v * index][j + h * index] != word[index])
                     full = false;
@@ -49,10 +45,11 @@ static int CountFromLetter(string word, List<string> padded, int i, int j)
     return res;
 }
 
-// Palindromes are counted twice
+// Palindromes are counted twice. Not a problem here with the word XMAS.
 static long FirstPart(string word, List<string> padded)
 {
     long count = 0;
+
     int paddingSize = word.Length - 1;
     int width = padded[0].Length;
     int height = padded.Count;
@@ -85,24 +82,26 @@ static bool MatchCross(List<string> l, int i, int j)
     return false;
 }
 
-static long SecondPart(string word, List<string> padded)
+static long SecondPart(List<string> padded)
 {
     long count = 0;
-    int paddingSize = word.Length - 1;
+
     int width = padded[0].Length;
     int height = padded.Count;
-
-    for (int i = paddingSize; i < height - paddingSize; i++)
-        for (int j = paddingSize; j < width - paddingSize; j++)
+    for (int i = 1; i < height - 1; i++)
+        for (int j = 1; j < width - 1; j++)
             if (padded[i][j] == 'A' && MatchCross(padded, i, j))
                 count++;
     return count;
 }
 
+string[] table = GetStringTable("input.txt");
 
 string word = "XMAS";
-List<string> padded = GetPaddedInput(word, '*');
+List<string> padded = PadStringTable(table, '*', word.Length - 1);
 long firstPartCount = FirstPart(word, padded);
-Console.WriteLine(firstPartCount);
-long secondPartCount = SecondPart(word, padded);
-Console.WriteLine(secondPartCount);
+Console.WriteLine($"First part: {firstPartCount}");
+
+padded = PadStringTable(table, '*', 1);
+long secondPartCount = SecondPart(padded);
+Console.WriteLine($"Second part: {secondPartCount}");
