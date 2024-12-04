@@ -1,5 +1,7 @@
 ﻿// Day 4: Ceres Search
 
+using System.Security.Cryptography.X509Certificates;
+
 static string[] GetStringTable(string filePath)
 {
     StreamReader reader = new(filePath);
@@ -13,34 +15,26 @@ static List<string> PadStringTable(string[] table, char pad, int amount)
     string linePadding = new(pad, table[0].Length + 2 * amount);
     string sidePadding = new(pad, amount);
 
-    for (int i = 0; i < amount; i++)
-        output.Add(linePadding);
-    foreach (string line in table)
-        output.Add(sidePadding + line + sidePadding);
-    for (int i = 0; i < amount; i++)
-        output.Add(linePadding);
+    output.AddRange(Enumerable.Repeat(linePadding, amount));
+    output.AddRange(table.Select(line => sidePadding + line + sidePadding));
+    output.AddRange(Enumerable.Repeat(linePadding, amount));
 
     return output;
 }
 
-static int CountFromLetter(string word, List<string> padded, int i, int j)
+static int CountFromLetter(List<string> padded, string word, int i, int j)
 {
     int res = 0;
-    int[] values = [-1, 0, 1];
-    foreach (int h in values)
+    int[] dir = [-1, 0, 1];
+    var directions = dir.SelectMany(h => dir, (h, v) => (h, v)).Where(t => t != (0, 0));
+    foreach (var (h, v) in directions)
     {
-        foreach (int v in values)
-        {
-            if (v == 0 && h == 0) continue;
-            bool full = true;
-            if (padded.Any(l => l.Length <= j + h * (word.Length - 1) || l.Length <= i + v * (word.Length - 1)))
-                continue;
-            for (int index = 0; index < word.Length; index++)
-                if (padded[i + v * index][j + h * index] != word[index])
-                    full = false;
-            if (full)
-                res++;
-        }
+        bool full = true;
+        for (int index = 0; index < word.Length; index++)
+            if (padded[i + v * index][j + h * index] != word[index])
+                full = false;
+        if (full)
+            res++;
     }
     return res;
 }
@@ -56,7 +50,7 @@ static long FirstPart(string word, List<string> padded)
 
     for (int i = paddingSize; i < height - paddingSize; i++)
         for (int j = paddingSize; j < width - paddingSize; j++)
-            count += CountFromLetter(word, padded, i, j);
+            count += CountFromLetter(padded, word, i, j);
     return count;
 }
 
@@ -66,6 +60,7 @@ static bool MatchCross(List<string> l, int i, int j)
     char topRight = l[i - 1][j + 1];
     char bottomLeft = l[i + 1][j - 1];
     char bottomRight = l[i + 1][j + 1];
+    
 
     if (topLeft == 'M')
     {
