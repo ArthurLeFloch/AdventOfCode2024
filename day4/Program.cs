@@ -1,7 +1,4 @@
 ﻿// Day 4: Ceres Search
-
-using System.Security.Cryptography.X509Certificates;
-
 static string[] GetStringTable(string filePath)
 {
     StreamReader reader = new(filePath);
