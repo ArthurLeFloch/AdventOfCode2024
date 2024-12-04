@@ -57,7 +57,6 @@ static bool MatchCross(List<string> l, int i, int j)
     char topRight = l[i - 1][j + 1];
     char bottomLeft = l[i + 1][j - 1];
     char bottomRight = l[i + 1][j + 1];
-    
 
     if (topLeft == 'M')
     {
