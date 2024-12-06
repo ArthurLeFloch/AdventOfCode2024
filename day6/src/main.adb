@@ -16,9 +16,30 @@ procedure Main is
    Width   : Natural := 0;
    Height  : Natural := 0;
 
-   Initial_X : Natural := 0;
-   Initial_Y : Natural := 0;
-   Direction : Character := '^';
+   type Position_Record is record
+      X : Integer;
+      Y : Integer;
+   end record;
+
+   type Direction_Record is record
+      dx : Integer;
+      dy : Integer;
+   end record;
+
+   type State_Record is record
+      pos : Position_Record;
+      dir : Direction_Record;
+   end record;
+
+   Initial_State : State_Record;
+
+   Directions : array (Character) of Direction_Record :=
+     ('^'    => (dx => 0, dy => -1),
+      'v'    => (dx => 0, dy => 1),
+      '<'    => (dx => -1, dy => 0),
+      '>'    => (dx => 1, dy => 0),
+      others => (dx => 0, dy => 0));
+   Direction  : Direction_Record := (dx => 0, dy => 0);
 
    procedure CopyMatrix (Input : Matrix_Access; Output : out Matrix_Access) is
    begin
@@ -30,40 +51,36 @@ procedure Main is
       end loop;
    end CopyMatrix;
 
-   procedure SetDirection
-     (D : Character; dx : in out Integer; dy : in out Integer) is
+   procedure TurnRight (State : in out State_Record) is
    begin
-      if D = '^' then
-         dx := 0;
-         dy := -1;
-      elsif D = 'v' then
-         dx := 0;
-         dy := 1;
-      elsif D = '<' then
-         dx := -1;
-         dy := 0;
-      elsif D = '>' then
-         dx := 1;
-         dy := 0;
-      end if;
-   end SetDirection;
-
-   procedure TurnRight (dx : in out Integer; dy : in out Integer) is
-   begin
-      if dx = 0 and dy = -1 then
-         dx := 1;
-         dy := 0;
-      elsif dx = 1 and dy = 0 then
-         dx := 0;
-         dy := 1;
-      elsif dx = 0 and dy = 1 then
-         dx := -1;
-         dy := 0;
-      elsif dx = -1 and dy = 0 then
-         dx := 0;
-         dy := -1;
+      if State.dir.dx = 0 and State.dir.dy = -1 then
+         State.dir.dx := 1;
+         State.dir.dy := 0;
+      elsif State.dir.dx = 1 and State.dir.dy = 0 then
+         State.dir.dx := 0;
+         State.dir.dy := 1;
+      elsif State.dir.dx = 0 and State.dir.dy = 1 then
+         State.dir.dx := -1;
+         State.dir.dy := 0;
+      elsif State.dir.dx = -1 and State.dir.dy = 0 then
+         State.dir.dx := 0;
+         State.dir.dy := -1;
       end if;
    end TurnRight;
+
+   function NextState (Current : State_Record) return State_Record is
+      Result : State_Record;
+   begin
+      Result := Current;
+      Result.pos.X := Result.pos.X + Result.dir.dx;
+      Result.pos.Y := Result.pos.Y + Result.dir.dy;
+      return Result;
+   end NextState;
+
+   function IsStateValid (State : State_Record) return Boolean is
+   begin
+      return State.pos.X in 1 .. Width and State.pos.Y in 1 .. Height;
+   end IsStateValid;
 
    procedure ParseInput (File_Name : String) is
       File         : File_Type;
@@ -76,8 +93,11 @@ procedure Main is
             C := UStr.Element (Line, I);
             Problem (Height, I) := C;
             if C = '^' or C = 'v' or C = '<' or C = '>' then
-               Initial_X := I;
-               Initial_Y := Height;
+               Direction := Directions (C);
+               Initial_State.pos.X := I;
+               Initial_State.pos.Y := Height;
+               Initial_State.dir.dx := Direction.dx;
+               Initial_State.dir.dy := Direction.dy;
             end if;
          end loop;
       end AddLine;
@@ -101,35 +121,31 @@ procedure Main is
       Close (File);
    end ParseInput;
 
-   function FirstPart (Problem : Matrix_Access) return Integer is
-      dx : Integer := 0;
-      dy : Integer := 0;
+   function FirstPart
+     (Matrix : Matrix_Access; State : State_Record) return Integer
+   is
+      Current : State_Record := State;
+      Next    : State_Record;
 
-      X : Integer := Initial_X;
-      Y : Integer := Initial_Y;
-      D : Character := Direction;
-
-      Tmp : Matrix_Access := Problem;
+      Tmp : Matrix_Access := Matrix;
       Sum : Natural := 0;
    begin
-      SetDirection (D, dx, dy);
-
       Sum := Sum + 1;
-      Tmp (Y, X) := 'X';
+      Tmp (Current.pos.Y, Current.pos.X) := 'X';
 
       loop
-         if X + dx > Width or X + dx < 1 or Y + dy > Height or Y + dy < 1 then
+         Next := NextState (Current);
+         if not (isStateValid (Next)) then
             exit;
          end if;
 
-         if Problem (Y + dy, X + dx) = '#' then
-            TurnRight (dx, dy);
+         if Matrix (Next.pos.Y, Next.pos.X) = '#' then
+            TurnRight (Current);
          else
-            X := X + dx;
-            Y := Y + dy;
-            if Tmp (Y, X) = '.' then
+            Current := NextState (Current);
+            if Tmp (Current.pos.Y, Current.pos.X) = '.' then
                Sum := Sum + 1;
-               Tmp (Y, X) := 'X';
+               Tmp (Current.pos.Y, Current.pos.X) := 'X';
             end if;
          end if;
       end loop;
@@ -137,99 +153,91 @@ procedure Main is
       return Sum;
    end FirstPart;
 
-   type Quad_Int is record
-      x, y, dx, dy : Integer;
-   end record;
-
-   function Hash_Quad_Int (Key : Quad_Int) return Ada.Containers.Hash_Type is
-      Key_String : String := Integer'Image(Key.x) & Integer'Image(Key.y) & Integer'Image(Key.dx) & Integer'Image(Key.dy);
+   function Hash_State (Key : State_Record) return Ada.Containers.Hash_Type is
+      Key_String : String :=
+        Integer'Image (Key.pos.X)
+        & Integer'Image (Key.pos.Y)
+        & Integer'Image (Key.dir.dx)
+        & Integer'Image (Key.dir.dy);
    begin
       return Ada.Strings.Hash (Key_String);
-   end Hash_Quad_Int;
+   end Hash_State;
 
-   function Quad_Int_Equal (First, Second : Quad_Int) return Boolean is
+   function State_Equal (First, Second : State_Record) return Boolean is
    begin
       return
-        First.x = Second.x
-        and First.y = Second.y
-        and First.dx = Second.dx
-        and First.dy = Second.dy;
-   end Quad_Int_Equal;
+        First.pos.X = Second.pos.X
+        and First.pos.y = Second.pos.y
+        and First.dir.dx = Second.dir.dx
+        and First.dir.dy = Second.dir.dy;
+   end State_Equal;
 
-   package Quad_Int_Set is new
+   package State_Set is new
      Ada.Containers.Hashed_Sets
-       (Element_Type    => Quad_Int,
-        Hash            => Hash_Quad_Int,
-        Equivalent_Elements => Quad_Int_Equal);
+       (Element_Type        => State_Record,
+        Hash                => Hash_State,
+        Equivalent_Elements => State_Equal);
 
    -- Surely there is a faster way to do this
-   function SecondPart (Matrix : Matrix_Access) return Integer is
-      dx : Integer := 0;
-      dy : Integer := 0;
-
-      X   : Integer := Initial_X;
-      Y   : Integer := Initial_Y;
-      D   : Character := Direction;
-      Sum : Integer := 0;
+   function SecondPart
+     (Matrix : Matrix_Access; State : State_Record) return Integer
+   is
+      Current : State_Record := State;
+      Next    : State_Record;
+      Sum     : Integer := 0;
 
       function IsLoop return Boolean is
-         X    : Integer := Initial_X;
-         Y    : Integer := Initial_Y;
-         dx   : Integer := 0;
-         dy   : Integer := 0;
-         Path : Quad_Int_Set.Set;
+         Current : State_Record := State;
+         Next    : State_Record;
+         Path    : State_Set.Set;
       begin
-         SetDirection (D, dx, dy);
-
-         Path.Include (Quad_Int'(X, Y, dx, dy));
+         Path.Include (Current);
 
          loop
-            if X + dx > Width or X + dx < 1 or Y + dy > Height or Y + dy < 1
-            then
+            Next := NextState (Current);
+            if not (IsStateValid (Next)) then
                return False;
             end if;
 
-            if Matrix (Y + dy, X + dx) = '#' then
-               TurnRight (dx, dy);
+            if Matrix (Next.pos.Y, Next.pos.X) = '#' then
+               TurnRight (Current);
             else
-               X := X + dx;
-               Y := Y + dy;
+               Current := Next;
             end if;
 
-            if Path.Contains (Quad_Int'(X, Y, dx, dy)) then
+            if Path.Contains (Current) then
                return True;
             end if;
 
-            Path.Include (Quad_Int'(X, Y, dx, dy));
+            Path.Include (Current);
          end loop;
          -- Should never reach this point
          return False;
       end IsLoop;
-
    begin
-      SetDirection (D, dx, dy);
-
-      Matrix (Y, X) := 'X';
+      Matrix (Current.pos.Y, Current.pos.X) := 'X';
 
       loop
-         if X + dx > Width or X + dx < 1 or Y + dy > Height or Y + dy < 1 then
+         Next := NextState (Current);
+         if not (IsStateValid (Next)) then
             exit;
          end if;
-         if Problem (Y + dy, X + dx) = '#' then
-            TurnRight (dx, dy);
-         else
-            X := X + dx;
-            Y := Y + dy;
 
-            if Matrix (Y, X) = '.' then
-               Matrix (Y, X) := 'X';
+         if Matrix (Next.pos.Y, Next.pos.X) = '#' then
+            TurnRight (Current);
+         else
+            Current := Next;
+
+            if Matrix (Current.pos.Y, Current.pos.X) = '.' then
+               Matrix (Current.pos.Y, Current.pos.X) := 'X';
             end if;
          end if;
       end loop;
 
       for I in 1 .. Height loop
          for J in 1 .. Width loop
-            if not (I = Initial_Y and J = Initial_X) and Matrix (I, J) = 'X'
+            if not (I = Initial_State.pos.Y and J = Initial_State.pos.X)
+              and Matrix (I, J) = 'X'
             then
                Matrix (I, J) := '#';
                if IsLoop then
@@ -250,16 +258,14 @@ begin
 
    Put_Line ("Width:" & Integer'Image (Width));
    Put_Line ("Height:" & Integer'Image (Height));
-   Put_Line
-     ("Initial position:"
-      & Integer'Image (Initial_X)
-      & ","
-      & Integer'Image (Initial_Y));
-   Put_Line ("Initial direction: " & Direction);
 
    CopyMatrix (Problem, FirstPartMatrix);
-   Put_Line ("First part:" & Integer'Image (FirstPart (FirstPartMatrix)));
+   Put_Line
+     ("First part:"
+      & Integer'Image (FirstPart (FirstPartMatrix, Initial_State)));
 
    CopyMatrix (Problem, SecondPartMatrix);
-   Put_Line ("Second part:" & Integer'Image (SecondPart (SecondPartMatrix)));
+   Put_Line
+     ("Second part:"
+      & Integer'Image (SecondPart (SecondPartMatrix, Initial_State)));
 end Main;
