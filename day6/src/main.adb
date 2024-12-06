@@ -1,7 +1,8 @@
 with Ada.Text_IO; use Ada.Text_IO;
 
+with Ada.Containers.Hashed_Sets;
+with Ada.Strings.Hash;
 with Ada.Strings.Unbounded;
-with Ada.Containers.Doubly_Linked_Lists;
 use Ada.Containers;
 
 procedure Main is
@@ -140,9 +141,26 @@ procedure Main is
       x, y, dx, dy : Integer;
    end record;
 
-   package Quad_Int_Lists is new
-     Ada.Containers.Doubly_Linked_Lists (Element_Type => Quad_Int);
-   use Quad_Int_Lists;
+   function Hash_Quad_Int (Key : Quad_Int) return Ada.Containers.Hash_Type is
+      Key_String : String := Integer'Image(Key.x) & Integer'Image(Key.y) & Integer'Image(Key.dx) & Integer'Image(Key.dy);
+   begin
+      return Ada.Strings.Hash (Key_String);
+   end Hash_Quad_Int;
+
+   function Quad_Int_Equal (First, Second : Quad_Int) return Boolean is
+   begin
+      return
+        First.x = Second.x
+        and First.y = Second.y
+        and First.dx = Second.dx
+        and First.dy = Second.dy;
+   end Quad_Int_Equal;
+
+   package Quad_Int_Set is new
+     Ada.Containers.Hashed_Sets
+       (Element_Type    => Quad_Int,
+        Hash            => Hash_Quad_Int,
+        Equivalent_Elements => Quad_Int_Equal);
 
    -- Surely there is a faster way to do this
    function SecondPart (Matrix : Matrix_Access) return Integer is
@@ -159,11 +177,11 @@ procedure Main is
          Y    : Integer := Initial_Y;
          dx   : Integer := 0;
          dy   : Integer := 0;
-         Path : List;
+         Path : Quad_Int_Set.Set;
       begin
          SetDirection (D, dx, dy);
 
-         Append (Path, Quad_Int'(X, Y, dx, dy));
+         Path.Include (Quad_Int'(X, Y, dx, dy));
 
          loop
             if X + dx > Width or X + dx < 1 or Y + dy > Height or Y + dy < 1
@@ -178,14 +196,11 @@ procedure Main is
                Y := Y + dy;
             end if;
 
-            for Item of Path loop
-               if Item.x = X and Item.y = Y and Item.dx = dx and Item.dy = dy
-               then
-                  return True;
-               end if;
-            end loop;
+            if Path.Contains (Quad_Int'(X, Y, dx, dy)) then
+               return True;
+            end if;
 
-            Append (Path, Quad_Int'(X, Y, dx, dy));
+            Path.Include (Quad_Int'(X, Y, dx, dy));
          end loop;
          -- Should never reach this point
          return False;
