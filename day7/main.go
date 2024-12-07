@@ -8,18 +8,20 @@ import (
 	"strings"
 )
 
-type Problem struct {
-	expected int
-	list     []int
+type Equation struct {
+	result  int
+	numbers []int
 }
 
-func parseInput(filePath string) []Problem {
+type EquationSet []Equation
+
+func parseInput(filePath string) EquationSet {
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	problems := []Problem{}
+	equations := EquationSet{}
 
 	lines := strings.Split(string(content), "\n")
 	for _, line := range lines {
@@ -29,76 +31,77 @@ func parseInput(filePath string) []Problem {
 		values := strings.Split(line, ":")
 		expected, _ := strconv.Atoi(values[0])
 
-		problem :=
-			Problem{
-				expected: expected,
-				list:     []int{},
+		equation :=
+			Equation{
+				result:  expected,
+				numbers: []int{},
 			}
 
-		for _, value := range strings.Split(strings.TrimSpace(values[1]), " ") {
+		for _, value := range strings.Fields(values[1]) {
 			number, _ := strconv.Atoi(value)
-			problem.list = append(problem.list, number)
+			equation.numbers = append(equation.numbers, number)
 		}
 
-		problems = append(problems, problem)
+		equations = append(equations, equation)
 	}
 
-	return problems
+	return equations
 }
 
-func recursiveCheck(problem Problem, index int, partialSum int) bool {
-	if index == len(problem.list) {
-		return partialSum == problem.expected
+func canSolve(equation *Equation, index int, partialSum int) bool {
+	if index == len(equation.numbers) {
+		return partialSum == equation.result
 	}
-	if partialSum > problem.expected {
+	if partialSum > equation.result {
 		return false
 	}
+	nextNumber := equation.numbers[index]
 
-	return recursiveCheck(problem, index+1, partialSum+problem.list[index]) ||
-		recursiveCheck(problem, index+1, partialSum*problem.list[index])
-
+	return canSolve(equation, index+1, partialSum+nextNumber) ||
+		canSolve(equation, index+1, partialSum*nextNumber)
 }
 
-func firstPart(problems []Problem) int {
+func firstPart(equations *EquationSet) int {
 	sum := 0
-	for _, problem := range problems {
-		if recursiveCheck(problem, 1, problem.list[0]) {
-			sum += problem.expected
+	for _, equation := range *equations {
+		if canSolve(&equation, 1, equation.numbers[0]) {
+			sum += equation.result
 		}
 	}
 	return sum
 }
 
-func recursiveCheckWithConcat(problem Problem, index int, partialSum int) bool {
-	if index == len(problem.list) {
-		return partialSum == problem.expected
+func canSolveExtended(equation *Equation, index int, partialSum int) bool {
+	if index == len(equation.numbers) {
+		return partialSum == equation.result
 	}
-	if partialSum > problem.expected {
+	if partialSum > equation.result {
 		return false
 	}
+	nextNumber := equation.numbers[index]
 
-	concatenated := strconv.Itoa(partialSum) + strconv.Itoa(problem.list[index])
+	concatenated := strconv.Itoa(partialSum) + strconv.Itoa(nextNumber)
 	newPartialSum, _ := strconv.Atoi(concatenated)
 
-	return recursiveCheckWithConcat(problem, index+1, partialSum+problem.list[index]) ||
-		recursiveCheckWithConcat(problem, index+1, partialSum*problem.list[index]) ||
-		recursiveCheckWithConcat(problem, index+1, newPartialSum)
+	return canSolveExtended(equation, index+1, partialSum+nextNumber) ||
+		canSolveExtended(equation, index+1, partialSum*nextNumber) ||
+		canSolveExtended(equation, index+1, newPartialSum)
 
 }
 
-func secondPart(problems []Problem) int {
+func secondPart(equations *EquationSet) int {
 	sum := 0
-	for _, problem := range problems {
-		if recursiveCheckWithConcat(problem, 1, problem.list[0]) {
-			sum += problem.expected
+	for _, equation := range *equations {
+		if canSolveExtended(&equation, 1, equation.numbers[0]) {
+			sum += equation.result
 		}
 	}
 	return sum
 }
 
 func main() {
-	problems := parseInput("input.txt")
+	equations := parseInput("input.txt")
 
-	fmt.Println("First part:", firstPart(problems))
-	fmt.Println("Second part:", secondPart(problems))
+	fmt.Println("First part:", firstPart(&equations))
+	fmt.Println("Second part:", secondPart(&equations))
 }
