@@ -54,15 +54,15 @@ int firstPart(Problem *p)
 
     int sum = 0;
 
-    for (auto const &pair : p->positions)
+    for (const auto& [symbol, positions] : p->positions)
     {
-        int n = pair.second.size();
+        int n = positions.size();
         for (int i = 0; i < n - 1; ++i)
         {
-            Position first = pair.second[i];
+            Position first = positions[i];
             for (int j = i + 1; j < n; ++j)
             {
-                Position second = pair.second[j];
+                Position second = positions[j];
 
                 int newX = second.x + (second.x - first.x);
                 int newY = second.y + (second.y - first.y);
@@ -94,12 +94,12 @@ int secondPart(Problem *p)
 
     int sum = 0;
 
-    for (auto const &pair : p->positions)
+    for (const auto& [symbol, positions] : p->positions)
     {
-        int n = pair.second.size();
+        int n = positions.size();
         for (int i = 0; i < n; ++i)
         {
-            Position first = pair.second[i];
+            Position first = positions[i];
 
             if (n > 1 && !seen[first.x][first.y])
             {
@@ -108,7 +108,7 @@ int secondPart(Problem *p)
             }
             for (int j = i + 1; j < n; ++j)
             {
-                Position second = pair.second[j];
+                Position second = positions[j];
 
                 int dx = second.x - first.x;
                 int dy = second.y - first.y;
