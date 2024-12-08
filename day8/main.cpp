@@ -48,13 +48,13 @@ bool outside(int x, int y, int size)
     return x < 0 || y < 0 || x >= size || y >= size;
 }
 
-int firstPart(Problem *p)
+int firstPart(const Problem &p)
 {
-    std::vector<std::vector<bool>> seen(p->size, std::vector<bool>(p->size, false));
+    std::vector<std::vector<bool>> seen(p.size, std::vector<bool>(p.size, false));
 
     int sum = 0;
 
-    for (const auto& [symbol, positions] : p->positions)
+    for (const auto &[symbol, positions] : p.positions)
     {
         int n = positions.size();
         for (int i = 0; i < n - 1; ++i)
@@ -67,7 +67,7 @@ int firstPart(Problem *p)
                 int newX = second.x + (second.x - first.x);
                 int newY = second.y + (second.y - first.y);
 
-                if (!outside(newX, newY, p->size) && !seen[newX][newY])
+                if (!outside(newX, newY, p.size) && !seen[newX][newY])
                 {
                     seen[newX][newY] = true;
                     sum++;
@@ -76,7 +76,7 @@ int firstPart(Problem *p)
                 newX = first.x + (first.x - second.x);
                 newY = first.y + (first.y - second.y);
 
-                if (!outside(newX, newY, p->size) && !seen[newX][newY])
+                if (!outside(newX, newY, p.size) && !seen[newX][newY])
                 {
                     seen[newX][newY] = true;
                     sum++;
@@ -88,13 +88,13 @@ int firstPart(Problem *p)
     return sum;
 }
 
-int secondPart(Problem *p)
+int secondPart(const Problem &p)
 {
-    std::vector<std::vector<bool>> seen(p->size, std::vector<bool>(p->size, false));
+    std::vector<std::vector<bool>> seen(p.size, std::vector<bool>(p.size, false));
 
     int sum = 0;
 
-    for (const auto& [symbol, positions] : p->positions)
+    for (const auto &[symbol, positions] : p.positions)
     {
         int n = positions.size();
         for (int i = 0; i < n; ++i)
@@ -115,7 +115,7 @@ int secondPart(Problem *p)
 
                 int x = second.x;
                 int y = second.y;
-                while (!outside(x + dx, y + dy, p->size))
+                while (!outside(x + dx, y + dy, p.size))
                 {
                     x += dx;
                     y += dy;
@@ -128,7 +128,7 @@ int secondPart(Problem *p)
 
                 x = first.x;
                 y = first.y;
-                while (!outside(x - dx, y - dy, p->size))
+                while (!outside(x - dx, y - dy, p.size))
                 {
                     x -= dx;
                     y -= dy;
@@ -149,8 +149,10 @@ int main()
 {
     Problem p("input.txt");
 
-    std::cout << "First part: " << firstPart(&p) << std::endl;
-    std::cout << "Second part: " << secondPart(&p) << std::endl;
+    Problem &pp = p;
+
+    std::cout << "First part: " << firstPart(pp) << std::endl;
+    std::cout << "Second part: " << secondPart(pp) << std::endl;
 
     return 0;
 }
