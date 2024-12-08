@@ -1,3 +1,5 @@
+-- Day 6: Guard Gallivant
+
 with Ada.Text_IO; use Ada.Text_IO;
 
 with Ada.Containers.Hashed_Sets;

@@ -1,3 +1,5 @@
+// Day 8: Resonant Collinearity
+
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
