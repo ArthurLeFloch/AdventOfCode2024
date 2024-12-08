@@ -1,24 +1,22 @@
 #include <iostream>
 #include <fstream>
-#include <map>
+#include <unordered_map>
 #include <vector>
 
-class Position
+struct Position
 {
-public:
     int x, y;
-    Position(int x, int y) : x(x), y(y) {}
 };
 
 class Problem
 {
 public:
-    std::map<char, std::vector<Position>> positions;
+    std::unordered_map<char, std::vector<Position>> positions;
     int size = -1;
 
-    Problem(std::string filePath)
+    Problem(const std::string &filePath)
     {
-        std::ifstream f("input.txt");
+        std::ifstream f(filePath);
 
         if (!f.is_open())
         {
@@ -26,27 +24,28 @@ public:
             return;
         }
 
-        int y = 0;
+        int x, y = 0;
         std::string s;
         while (getline(f, s))
         {
-            for (int x = 0; x < s.size(); x++)
+            x = 0;
+            for (const char c : s)
             {
-                char c = s[x];
                 if (c != '.')
-                    positions[c].push_back(Position(x, y));
+                    positions[c].push_back({x, y});
+                x++;
             }
             y++;
             if (size == -1)
                 size = s.size();
         }
     }
-};
 
-bool outside(int x, int y, int size)
-{
-    return x < 0 || y < 0 || x >= size || y >= size;
-}
+    bool inside(int x, int y) const
+    {
+        return x >= 0 && y >= 0 && x < size && y < size;
+    }
+};
 
 int firstPart(const Problem &p)
 {
@@ -67,7 +66,7 @@ int firstPart(const Problem &p)
                 int newX = second.x + (second.x - first.x);
                 int newY = second.y + (second.y - first.y);
 
-                if (!outside(newX, newY, p.size) && !seen[newX][newY])
+                if (p.inside(newX, newY) && !seen[newX][newY])
                 {
                     seen[newX][newY] = true;
                     sum++;
@@ -76,7 +75,7 @@ int firstPart(const Problem &p)
                 newX = first.x + (first.x - second.x);
                 newY = first.y + (first.y - second.y);
 
-                if (!outside(newX, newY, p.size) && !seen[newX][newY])
+                if (p.inside(newX, newY) && !seen[newX][newY])
                 {
                     seen[newX][newY] = true;
                     sum++;
@@ -115,7 +114,7 @@ int secondPart(const Problem &p)
 
                 int x = second.x;
                 int y = second.y;
-                while (!outside(x + dx, y + dy, p.size))
+                while (p.inside(x + dx, y + dy))
                 {
                     x += dx;
                     y += dy;
@@ -128,7 +127,7 @@ int secondPart(const Problem &p)
 
                 x = first.x;
                 y = first.y;
-                while (!outside(x - dx, y - dy, p.size))
+                while (p.inside(x - dx, y - dy))
                 {
                     x -= dx;
                     y -= dy;
@@ -149,10 +148,8 @@ int main()
 {
     Problem p("input.txt");
 
-    Problem &pp = p;
-
-    std::cout << "First part: " << firstPart(pp) << std::endl;
-    std::cout << "Second part: " << secondPart(pp) << std::endl;
+    std::cout << "First part: " << firstPart(p) << std::endl;
+    std::cout << "Second part: " << secondPart(p) << std::endl;
 
     return 0;
 }
