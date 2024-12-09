@@ -65,5 +65,5 @@ firstPart() {
 
 problem=$(parseInput "input.txt")
 
-#firstPart $problem
-secondPart $problem
+firstPart $problem
+# secondPart $problem
