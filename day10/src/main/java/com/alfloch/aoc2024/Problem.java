@@ -11,9 +11,7 @@ public class Problem {
 
     Problem(String filePath) {
         File file = new File(filePath);
-        try {
-            BufferedReader reader = new BufferedReader(new FileReader(file));
-
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             String line = reader.readLine();
             size = line.length();
             map = new int[size][size];
