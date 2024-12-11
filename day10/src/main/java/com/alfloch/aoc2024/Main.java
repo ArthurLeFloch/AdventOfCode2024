@@ -1,3 +1,5 @@
+// Day 10: Hoof It
+
 package com.alfloch.aoc2024;
 
 import java.util.ArrayList;
