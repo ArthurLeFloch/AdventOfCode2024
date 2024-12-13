@@ -2,15 +2,11 @@
 
 class Position
 {
-	public $x, $y;
-
-	function __construct($x, $y)
+	public function __construct(public int $x, public int $y)
 	{
-		$this->x = $x;
-		$this->y = $y;
 	}
 
-	public function add(Position $v)
+	public function add(Position $v): void
 	{
 		$this->x += $v->x;
 		$this->y += $v->y;
@@ -19,78 +15,48 @@ class Position
 
 class Problem
 {
-	public $map;
-	public $array;
-	public $size;
+	public array $map;
+	public array $array;
+	public int $size;
 
-	function __construct(string $file_path)
+	public function __construct(string $file_path)
 	{
 		$this->array = file($file_path);
-		$locations = array();
 		$this->size = count($this->array);
+		$this->map = [];
+
 		for ($i = 0; $i < $this->size; $i++) {
 			$line = $this->array[$i];
 			for ($j = 0; $j < $this->size; $j++) {
 				$pos = new Position($i, $j);
-				if (array_key_exists($line[$j], $locations)) {
-					$locations[$line[$j]][] = $pos;
-				} else {
-					$locations[$line[$j]] = array($pos);
-				}
+				$this->map[$line[$j]][] = $pos;
 			}
 		}
-		$this->map = $locations;
 	}
 
-	// For debug
-	function show_map()
+	public function is_same_key(Position $pos, string $key): bool
 	{
-		foreach (array_keys($this->map) as $key) {
-			print ($key . ":\n");
-			foreach ($this->map[$key] as $pos) {
-				print ("(" . $pos->x . ", " . $pos->y . "), ");
-			}
-			print ("\n");
-		}
+		return !$this->is_off($pos) && $this->array[$pos->x][$pos->y] === $key;
 	}
 
-	function is_same_key(Position $pos, string $key): bool
-	{
-		if ($this->is_off($pos))
-			return false;
-		if ($this->array[$pos->x][$pos->y] != $key)
-			return false;
-		return true;
-	}
-
-	function key(Position $pos): string
+	public function key(Position $pos): string
 	{
 		return $this->array[$pos->x][$pos->y];
 	}
 
-	// hor = true : horizontal
-	function is_off(Position $pos): bool
+	public function is_off(Position $pos): bool
 	{
-		if ($pos->x < 0 || $pos->y < 0)
-			return true;
-		if ($pos->x >= $this->size || $pos->y >= $this->size)
-			return true;
-		return false;
+		return $pos->x < 0 || $pos->y < 0 || $pos->x >= $this->size || $pos->y >= $this->size;
 	}
-
 }
 
 class AreaPerimeter
 {
-	public int $area;
-	public int $perimeter;
-	public function __construct(int $area, int $perimeter)
+	public function __construct(public int $area, public int $perimeter)
 	{
-		$this->area = $area;
-		$this->perimeter = $perimeter;
 	}
 
-	public function add(AreaPerimeter $other)
+	public function add(AreaPerimeter $other): void
 	{
 		$this->area += $other->area;
 		$this->perimeter += $other->perimeter;
@@ -104,12 +70,12 @@ function recursive_count(Problem $p, Position $pos, array &$seen, string $key): 
 		return $res;
 	$seen[$pos->x][$pos->y] = true;
 
-	$others = array(
+	$others = [
 		new Position($pos->x, $pos->y - 1),
 		new Position($pos->x + 1, $pos->y),
 		new Position($pos->x, $pos->y + 1),
 		new Position($pos->x - 1, $pos->y)
-	);
+	];
 
 	$res->area = 1;
 
@@ -127,8 +93,7 @@ function recursive_count(Problem $p, Position $pos, array &$seen, string $key): 
 function first_part(Problem $p): int
 {
 	$sum = 0;
-	foreach (array_keys($p->map) as $key) {
-		$positions = $p->map[$key];
+	foreach ($p->map as $key => $positions) {
 		$first_pos = $positions[0];
 		$key = $p->array[$first_pos->x][$first_pos->y];
 		$seen = array_fill(0, $p->size, array_fill(0, $p->size, false));
@@ -144,36 +109,31 @@ function first_part(Problem $p): int
 	return $sum;
 }
 
-
 function recursive_search(Problem $p, array &$seen, Position $pos, string $key): array
 {
 	$seen[$pos->x][$pos->y] = true;
 
-	$others = array(
+	$others = [
 		new Position($pos->x, $pos->y - 1),
 		new Position($pos->x + 1, $pos->y),
 		new Position($pos->x, $pos->y + 1),
 		new Position($pos->x - 1, $pos->y)
-	);
+	];
 
-	$res = array();
-	$res[] = $pos;
+	$res = [$pos];
 
 	foreach ($others as $other) {
-		if (!$p->is_same_key($other, $key))
+		if (!$p->is_same_key($other, $key) || $seen[$other->x][$other->y])
 			continue;
-		if ($seen[$other->x][$other->y])
-			continue;
-		$to_add = recursive_search($p, $seen, $other, $key);
-		$res = array_merge($res, $to_add);
+		$res = array_merge($res, recursive_search($p, $seen, $other, $key));
 	}
 	return $res;
 }
 
 function find_cluster_side_count(Problem $p, array $cluster, string $key): int
 {
-	$x_indexed = array();
-	$y_indexed = array();
+	$x_indexed = [];
+	$y_indexed = [];
 
 	foreach ($cluster as $pos) {
 		$x_indexed[$pos->x][] = $pos->y;
@@ -195,19 +155,15 @@ function count_sides(Problem $p, array $indexed, string $key, bool $is_x): int
 {
 	$count = 0;
 
-	foreach (array_keys($indexed) as $index) {
-		if ($is_x) {
-			$vectors = array(new Position(-1, 0), new Position(1, 0));
-		} else {
-			$vectors = array(new Position(0, -1), new Position(0, 1));
-		}
+	foreach ($indexed as $index => $positions) {
+		$vectors = $is_x ? [new Position(-1, 0), new Position(1, 0)] : [new Position(0, -1), new Position(0, 1)];
 		foreach ($vectors as $v) {
 			$found_first = false;
 			$last = null;
-			foreach ($indexed[$index] as $pos) {
+			foreach ($positions as $pos) {
 				$position = $is_x ? new Position($index, $pos) : new Position($pos, $index);
 				$position->add($v);
-				$cond = $p->is_off($position) || $p->key($position) != $key;
+				$cond = $p->is_off($position) || $p->key($position) !== $key;
 				if ($cond && ($last === null || $pos === $last + 1)) {
 					if (!$found_first) {
 						$found_first = true;
@@ -229,7 +185,7 @@ function count_sides(Problem $p, array $indexed, string $key, bool $is_x): int
 
 function find_clusters(Problem $p, array &$seen, string $key): array
 {
-	$clusters = array();
+	$clusters = [];
 	foreach ($p->map[$key] as $pos) {
 		if ($seen[$pos->x][$pos->y])
 			continue;
@@ -242,7 +198,7 @@ function second_part(Problem $p): int
 {
 	$sum = 0;
 
-	foreach (array_keys($p->map) as $key) {
+	foreach ($p->map as $key => $positions) {
 		$seen = array_fill(0, $p->size, array_fill(0, $p->size, false));
 
 		$clusters = find_clusters($p, $seen, $key);
@@ -255,8 +211,6 @@ function second_part(Problem $p): int
 	return $sum;
 }
 
-
 $input = new Problem("input.txt");
 print ("First part : " . first_part($input) . "\n");
-
 print ("Second part : " . second_part($input) . "\n");
