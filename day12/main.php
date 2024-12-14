@@ -1,5 +1,7 @@
 <?php
 
+// Day 12: Garden Groups
+
 class Position
 {
 	public function __construct(public int $x, public int $y)
