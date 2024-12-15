@@ -1,17 +1,10 @@
 use std::fs;
 
-// TODO: Function as parameter to factorize code ?
-
-#[derive(Clone)] // TODO: Find out how it works
-#[derive(Copy)] // TODO: Find out how it works
-#[derive(PartialEq)] // TODO: Find out how it works
-#[derive(Debug)] // TODO: Find out how it works
+#[derive(Clone, Copy, PartialEq)]
 enum Cell {
     Wall,
     Empty,
     Box,
-    Robot,
-
     // Additional cells for the second part
     BoxLeft,
     BoxRight,
@@ -19,15 +12,21 @@ enum Cell {
 
 #[derive(Clone)]
 struct Vector {
-    x: i64,
-    y: i64,
+    x: usize,
+    y: usize,
 }
 
-fn add(v1: &Vector, v2: &Vector) -> Vector {
-    // Avoid add taking ownership of the vectors
+#[derive(Clone)]
+struct Direction {
+    x: i8,
+    y: i8,
+}
+
+// Using & to avoid taking ownership of the vectors
+fn add(v: &Vector, d: &Direction) -> Vector {
     return Vector {
-        x: v1.x + v2.x,
-        y: v1.y + v2.y,
+        x: ((v.x as i8) + d.x) as usize,
+        y: ((v.y as i8) + d.y) as usize,
     };
 }
 
@@ -35,47 +34,85 @@ fn add(v1: &Vector, v2: &Vector) -> Vector {
 struct Problem {
     robot: Vector,
     map: Vec<Vec<Cell>>,
-    moves: Vec<Vector>,
+    moves: Vec<Direction>,
 }
 
 fn main() {
     let file_path: &str = "input.txt";
 
-    let p = parse_input(file_path);
-    println!("Start: {}, {}", p.robot.x, p.robot.y);
-    println!("First part: {}", first_part(p.clone()));
-
-    let p = parse_second_input(file_path);
-    println!("Start: {}, {}", p.robot.x, p.robot.y);
-    println!("Second part: {}", second_part(p.clone()));
+    println!("First part: {}", first_part(get_first_input(file_path)));
+    println!("Second part: {}", second_part(get_second_input(file_path)));
 }
 
-fn parse_input(file_path: &str) -> Problem {
+fn get_first_input(file_path: &str) -> Problem {
+    fn get_size(first_line: &str) -> (usize, usize) {
+        let width = first_line.len();
+        return (width, width);
+    }
+    fn read(problem: &mut Problem, c: char, i: usize, j: usize) {
+        problem.map[i][j] = match c {
+            '.' | '@' => Cell::Empty,
+            '#' => Cell::Wall,
+            'O' => Cell::Box,
+            e => panic!("Invalid character in input file: {}", e),
+        };
+        if c == '@' {
+            problem.robot.x = j;
+            problem.robot.y = i;
+        }
+    }
+    return parse_input(file_path, get_size, read);
+}
+
+fn get_second_input(file_path: &str) -> Problem {
+    fn get_size_doubled_width(first_line: &str) -> (usize, usize) {
+        let height = first_line.len();
+        return (height * 2, height);
+    }
+    fn read_doubled_width(problem: &mut Problem, c: char, i: usize, j: usize) {
+        let pos = Vector { x: 2 * j, y: i };
+
+        if c == '@' {
+            problem.robot = pos.clone();
+        }
+
+        if c == '.' || c == '@' {
+            problem.map[pos.y][pos.x] = Cell::Empty;
+            problem.map[pos.y][pos.x + 1] = Cell::Empty;
+        } else if c == '#' {
+            problem.map[pos.y][pos.x] = Cell::Wall;
+            problem.map[pos.y][pos.x + 1] = Cell::Wall;
+        } else if c == 'O' {
+            problem.map[pos.y][pos.x] = Cell::BoxLeft;
+            problem.map[pos.y][pos.x + 1] = Cell::BoxRight;
+        } else {
+            panic!("Invalid character in input file: {}", c);
+        }
+    }
+    return parse_input(file_path, get_size_doubled_width, read_doubled_width);
+}
+
+fn parse_input(
+    file_path: &str,
+    get_size: fn(&str) -> (usize, usize),
+    read: fn(&mut Problem, char, usize, usize),
+) -> Problem {
     let content = fs::read_to_string(file_path).expect("Error reading file");
 
     let first_line = content.lines().next().unwrap();
-    let width = first_line.len();
-    let height = width;
+    let (width, height) = get_size(first_line);
 
-    let mut array: Vec<Vec<Cell>> = vec![vec![Cell::Empty; width]; height];
-
-    let mut start = Vector { x: 0, y: 0 };
+    let mut problem = Problem {
+        robot: Vector { x: 0, y: 0 },
+        map: vec![vec![Cell::Empty; width]; height],
+        moves: Vec::new(),
+    };
 
     for (i, line) in content.lines().enumerate() {
         let mut count = 0;
         for (j, c) in line.chars().enumerate() {
             count += 1;
-            array[i][j] = match c {
-                '.' => Cell::Empty,
-                '#' => Cell::Wall,
-                'O' => Cell::Box,
-                '@' => Cell::Robot,
-                e => panic!("Invalid character in input file: {}", e),
-            };
-            if c == '@' {
-                start.x = j as i64;
-                start.y = i as i64;
-            }
+            read(&mut problem, c, i, j);
         }
         if count == 0 {
             // Start reading the moves
@@ -83,11 +120,12 @@ fn parse_input(file_path: &str) -> Problem {
         }
     }
 
-    let mut moves: Vec<Vector> = Vec::new();
+    println!("Start at {}, {}", problem.robot.x, problem.robot.y);
+
     for line in content.lines().skip(height) {
         for c in line.chars() {
-            let mut x = 0;
-            let mut y = 0;
+            let mut x: i8 = 0;
+            let mut y: i8 = 0;
             match c {
                 '^' => y = -1,
                 '>' => x = 1,
@@ -95,25 +133,21 @@ fn parse_input(file_path: &str) -> Problem {
                 '<' => x = -1,
                 e => panic!("Invalid character in input file: {}", e),
             }
-            moves.push(Vector { x, y });
+            problem.moves.push(Direction { x, y });
         }
     }
 
-    return Problem {
-        robot: start,
-        map: array,
-        moves,
-    };
+    return problem;
 }
 
-fn forward(map: &mut Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) -> Vector {
+fn forward(map: &mut Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) -> Vector {
     // Assumes that the cell in front of the robot is a box!
     // Returns the new position of the robot
 
     let current = pos.clone();
-    let front = add(pos, vector);
+    let front = add(pos, dir);
 
-    let mut cell: Cell = map[front.y as usize][front.x as usize];
+    let mut cell: Cell = map[front.y][front.x];
     if cell == Cell::Wall {
         return current;
     }
@@ -121,14 +155,14 @@ fn forward(map: &mut Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) -> Vector {
         return front;
     }
 
-    let mut res = add(pos, vector);
-    cell = map[res.y as usize][res.x as usize];
+    let mut res = add(pos, dir);
+    cell = map[res.y][res.x];
     while cell != Cell::Wall {
-        res = add(&res, vector);
-        cell = map[res.y as usize][res.x as usize];
+        res = add(&res, dir);
+        cell = map[res.y][res.x];
         if cell == Cell::Empty {
-            map[front.y as usize][front.x as usize] = Cell::Empty;
-            map[res.y as usize][res.x as usize] = Cell::Box;
+            map[front.y][front.x] = Cell::Empty;
+            map[res.y][res.x] = Cell::Box;
             return front;
         }
     }
@@ -138,9 +172,6 @@ fn forward(map: &mut Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) -> Vector {
 fn first_part(mut problem: Problem) -> i64 {
     // First part takes ownership of the problem given
     let mut pos = problem.robot.clone();
-
-    // We do not care about the @ in the map
-    problem.map[pos.y as usize][pos.x as usize] = Cell::Empty;
 
     for vector in problem.moves.iter() {
         pos = forward(&mut problem.map, &pos, vector);
@@ -158,96 +189,25 @@ fn first_part(mut problem: Problem) -> i64 {
     return sum;
 }
 
-fn parse_second_input(file_path: &str) -> Problem {
-    let content = fs::read_to_string(file_path).expect("Error reading file");
-
-    let first_line = content.lines().next().unwrap();
-    let height = first_line.len();
-    let width = height * 2;
-
-    let mut array: Vec<Vec<Cell>> = vec![vec![Cell::Empty; width]; height];
-
-    let mut start = Vector { x: 0, y: 0 };
-
-    for (i, line) in content.lines().enumerate() {
-        let mut count = 0;
-        for (j, c) in line.chars().enumerate() {
-            count += 1;
-
-            let pos = Vector {
-                x: 2 * j as i64,
-                y: i as i64,
-            };
-            if c == '@' {
-                start = pos.clone();
-                array[pos.y as usize][pos.x as usize] = Cell::Robot;
-                array[pos.y as usize][pos.x as usize + 1] = Cell::Empty;
-                continue;
-            } else if c == '#' {
-                array[pos.y as usize][pos.x as usize] = Cell::Wall;
-                array[pos.y as usize][pos.x as usize + 1] = Cell::Wall;
-                continue;
-            } else if c == '.' {
-                array[pos.y as usize][pos.x as usize] = Cell::Empty;
-                array[pos.y as usize][pos.x as usize + 1] = Cell::Empty;
-                continue;
-            } else if c == 'O' {
-                array[pos.y as usize][pos.x as usize] = Cell::BoxLeft;
-                array[pos.y as usize][pos.x as usize + 1] = Cell::BoxRight;
-                continue;
-            } else {
-                panic!("Invalid character in input file: {}", c);
-            }
-        }
-        if count == 0 {
-            // Start reading the moves
-            break;
-        }
-    }
-
-    let mut moves: Vec<Vector> = Vec::new();
-    for line in content.lines().skip(height) {
-        for c in line.chars() {
-            let mut x = 0;
-            let mut y = 0;
-            match c {
-                '^' => y = -1,
-                '>' => x = 1,
-                'v' => y = 1,
-                '<' => x = -1,
-                e => panic!("Invalid character in input file: {}", e),
-            }
-            moves.push(Vector { x, y });
-        }
-    }
-
-    return Problem {
-        robot: start,
-        map: array,
-        moves,
-    };
-}
-
 fn get_cell(map: &Vec<Vec<Cell>>, pos: &Vector) -> Cell {
-    return map[pos.y as usize][pos.x as usize];
+    return map[pos.y][pos.x];
 }
 
 // Should be called with the position of the box
-fn can_move_rec(map: &Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) -> bool {
-    let front = add(pos, vector);
+fn can_move_rec(map: &Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) -> bool {
+    let front = add(pos, dir);
 
     // Moving horizontally
-    if vector.y == 0 {
+    if dir.y == 0 {
         let front_cell = get_cell(map, &front);
         return match front_cell {
-            Cell::Empty => true,                    // Can move into an empty cell
-            Cell::Wall => false,                    // Cannot move into a wall
-            _ => can_move_rec(map, &front, vector), // Recurse for other cell types
+            Cell::Empty => true,                 // Can move into an empty cell
+            Cell::Wall => false,                 // Cannot move into a wall
+            _ => can_move_rec(map, &front, dir), // Recurse for other cell types
         };
     }
 
     // Moving vertically
-
     let cell = get_cell(map, pos);
     let other = if cell == Cell::BoxLeft {
         Vector {
@@ -262,8 +222,8 @@ fn can_move_rec(map: &Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) -> bool {
     };
 
     // Calculate the next positions for both the current and adjacent cells
-    let first = add(pos, vector);
-    let second = add(&other, vector);
+    let first = add(pos, dir);
+    let second = add(&other, dir);
 
     let first_cell = get_cell(map, &first);
     let second_cell = get_cell(map, &second);
@@ -277,12 +237,12 @@ fn can_move_rec(map: &Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) -> bool {
 
     // Recurse for any boxes that need to be moved
     if (first_cell == Cell::BoxLeft || first_cell == Cell::BoxRight)
-        && !can_move_rec(map, &first, vector)
+        && !can_move_rec(map, &first, dir)
     {
         return false;
     }
     if (second_cell == Cell::BoxLeft || second_cell == Cell::BoxRight)
-        && !can_move_rec(map, &second, vector)
+        && !can_move_rec(map, &second, dir)
     {
         return false;
     }
@@ -290,50 +250,49 @@ fn can_move_rec(map: &Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) -> bool {
     true
 }
 
-fn move_rec(map: &mut Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) {
-    let cell = map[pos.y as usize][pos.x as usize];
-    let front = add(pos, vector);
+fn move_box_left(map: &mut Vec<Vec<Cell>>, from: &Vector) {
+    map[from.y][from.x - 1] = Cell::BoxLeft;
+    map[from.y][from.x] = Cell::BoxRight;
+    map[from.y][from.x + 1] = Cell::Empty;
+}
+fn move_box_right(map: &mut Vec<Vec<Cell>>, pos: &Vector) {
+    map[pos.y][pos.x + 1] = Cell::BoxRight;
+    map[pos.y][pos.x] = Cell::BoxLeft;
+    map[pos.y][pos.x - 1] = Cell::Empty;
+}
+
+fn move_rec(map: &mut Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) {
+    let cell = map[pos.y][pos.x];
+    let front = add(pos, dir);
 
     // Horizontal moving
-    if vector.y == 0 {
-        let front_cell = map[front.y as usize][front.x as usize];
+    if dir.y == 0 {
+        let front_cell = map[front.y][front.x];
 
         if front_cell == Cell::Empty {
-            if vector.x == -1 {
-                // In this case the current pos should be BoxLeft
-                map[front.y as usize][front.x as usize] = Cell::BoxLeft;
-                map[pos.y as usize][pos.x as usize] = Cell::BoxRight;
-                map[pos.y as usize][(pos.x + 1) as usize] = Cell::Empty; // Leave place for the other boxes to move
-                return;
-            } else {
-                map[front.y as usize][front.x as usize] = Cell::BoxRight;
-                map[pos.y as usize][pos.x as usize] = Cell::BoxLeft;
-                map[pos.y as usize][(pos.x - 1) as usize] = Cell::Empty;
-                return;
-            }
+            return match dir.x {
+                -1 => move_box_left(map, pos),
+                1 => move_box_right(map, pos),
+                _ => (),
+            };
         }
 
-        if front_cell == Cell::BoxLeft && vector.x == -1 {
-            move_rec(map, &front, vector);
-            return;
-        } else if front_cell == Cell::BoxRight && vector.x == 1 {
-            move_rec(map, &front, vector);
+        // We need to get to the other side of the box compared to the direction
+        if (front_cell == Cell::BoxLeft && dir.x == -1)
+            || (front_cell == Cell::BoxRight && dir.x == 1)
+        {
+            move_rec(map, &front, dir);
             return;
         }
 
+        // If there's a box in front of the box, move it first
         if front_cell == Cell::BoxLeft || front_cell == Cell::BoxRight {
-            move_rec(map, &front, vector);
-            if vector.x == -1 {
-                map[front.y as usize][front.x as usize] = Cell::BoxLeft;
-                map[pos.y as usize][pos.x as usize] = Cell::BoxRight;
-                map[pos.y as usize][(pos.x + 1) as usize] = Cell::Empty;
-                return;
-            } else {
-                map[front.y as usize][front.x as usize] = Cell::BoxRight;
-                map[pos.y as usize][pos.x as usize] = Cell::BoxLeft;
-                map[pos.y as usize][(pos.x - 1) as usize] = Cell::Empty;
-                return;
-            }
+            move_rec(map, &front, dir);
+            return match dir.x {
+                -1 => move_box_left(map, pos),
+                1 => move_box_right(map, pos),
+                _ => (),
+            };
         }
         return;
     } else {
@@ -348,53 +307,43 @@ fn move_rec(map: &mut Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) {
                 y: pos.y,
             }
         };
-        let other_cell = map[other.y as usize][other.x as usize];
+        let other_cell = map[other.y][other.x];
 
-        let first = add(pos, vector);
-        let second = add(&other, vector);
+        let first = add(pos, dir);
+        let second = add(&other, dir);
 
-        let first_cell = map[first.y as usize][first.x as usize];
-        let second_cell = map[second.y as usize][second.x as usize];
+        let first_cell = map[first.y][first.x];
+        let second_cell = map[second.y][second.x];
 
         if first_cell == Cell::Empty && second_cell == Cell::Empty {
-            map[first.y as usize][first.x as usize] = cell;
-            map[second.y as usize][second.x as usize] = other_cell;
-            map[pos.y as usize][pos.x as usize] = Cell::Empty;
-            map[other.y as usize][other.x as usize] = Cell::Empty;
-            return;
-        }
-
-        // If there is two boxes to push, move_rec twice
-        if cell == second_cell && other_cell == first_cell {
-            move_rec(map, &first, vector);
-            move_rec(map, &second, vector);
-            map[first.y as usize][first.x as usize] = cell;
-            map[pos.y as usize][pos.x as usize] = Cell::Empty;
-            map[second.y as usize][second.x as usize] = other_cell;
-            map[other.y as usize][other.x as usize] = Cell::Empty;
-            return;
-        } else if cell == second_cell { // If there is only one box to push, move_rec only once
-            move_rec(map, &second, vector);
+            // Do nothing
+        } else if cell == second_cell && other_cell == first_cell {
+            // If there is two boxes to push, move_rec twice
+            move_rec(map, &first, dir);
+            move_rec(map, &second, dir);
+        } else if cell == second_cell {
+            // If there is only one box to push, move_rec only once
+            move_rec(map, &second, dir);
         } else {
             // Either there's a box aligned, or slightly off
-            move_rec(map, &first, vector);
+            move_rec(map, &first, dir);
         }
 
-        map[first.y as usize][first.x as usize] = cell;
-        map[second.y as usize][second.x as usize] = other_cell;
-        map[pos.y as usize][pos.x as usize] = Cell::Empty;
-        map[other.y as usize][other.x as usize] = Cell::Empty;
+        map[first.y][first.x] = cell;
+        map[second.y][second.x] = other_cell;
+        map[pos.y][pos.x] = Cell::Empty;
+        map[other.y][other.x] = Cell::Empty;
     }
 }
 
-fn forward2(map: &mut Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) -> Vector {
+fn forward2(map: &mut Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) -> Vector {
     // Assumes that the cell in front of the robot is a box!
     // Returns the new position of the robot
 
     let current = pos.clone();
-    let front = add(pos, vector);
+    let front = add(pos, dir);
 
-    let cell: Cell = map[front.y as usize][front.x as usize];
+    let cell: Cell = map[front.y][front.x];
     if cell == Cell::Wall {
         return current;
     }
@@ -402,11 +351,11 @@ fn forward2(map: &mut Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) -> Vector {
         return front;
     }
 
-    if !can_move_rec(map, &front, vector) {
+    if !can_move_rec(map, &front, dir) {
         return current;
     }
 
-    move_rec(map, &front, vector);
+    move_rec(map, &front, dir);
 
     return front;
 }
@@ -414,11 +363,8 @@ fn forward2(map: &mut Vec<Vec<Cell>>, pos: &Vector, vector: &Vector) -> Vector {
 fn second_part(mut problem: Problem) -> i64 {
     let mut pos = problem.robot.clone();
 
-    // We do not care about the @ in the map
-    problem.map[pos.y as usize][pos.x as usize] = Cell::Empty;
-
-    for vector in problem.moves.iter() {
-        pos = forward2(&mut problem.map, &pos, vector);
+    for dir in problem.moves.iter() {
+        pos = forward2(&mut problem.map, &pos, dir);
     }
 
     let mut sum: i64 = 0;
