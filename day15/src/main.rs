@@ -1,5 +1,7 @@
 use std::fs;
 
+// Day 15: Warehouse Woes
+
 #[derive(Clone, Copy, PartialEq)]
 enum Cell {
     Wall,
