@@ -40,11 +40,11 @@ struct Problem {
 fn main() {
     let file_path: &str = "input.txt";
 
-    println!("First part: {}", first_part(get_first_input(file_path)));
-    println!("Second part: {}", second_part(get_second_input(file_path)));
+    println!("First part: {}", first_part(file_path));
+    println!("Second part: {}", second_part(file_path));
 }
 
-fn get_first_input(file_path: &str) -> Problem {
+fn first_part(file_path: &str) -> i64 {
     fn get_size(first_line: &str) -> (usize, usize) {
         let width = first_line.len();
         return (width, width);
@@ -61,10 +61,11 @@ fn get_first_input(file_path: &str) -> Problem {
             problem.robot.y = i;
         }
     }
-    return parse_input(file_path, get_size, read);
+    let problem = parse_input(file_path, get_size, read);
+    return solve(problem, forward_simple);
 }
 
-fn get_second_input(file_path: &str) -> Problem {
+fn second_part(file_path: &str) -> i64 {
     fn get_size_doubled_width(first_line: &str) -> (usize, usize) {
         let height = first_line.len();
         return (height * 2, height);
@@ -89,7 +90,8 @@ fn get_second_input(file_path: &str) -> Problem {
             panic!("Invalid character in input file: {}", c);
         }
     }
-    return parse_input(file_path, get_size_doubled_width, read_doubled_width);
+    let problem = parse_input(file_path, get_size_doubled_width, read_doubled_width);
+    return solve(problem, forward_second);
 }
 
 fn parse_input(
@@ -140,7 +142,7 @@ fn parse_input(
     return problem;
 }
 
-fn forward(map: &mut Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) -> Vector {
+fn forward_simple(map: &mut Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) -> Vector {
     // Assumes that the cell in front of the robot is a box!
     // Returns the new position of the robot
 
@@ -167,26 +169,6 @@ fn forward(map: &mut Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) -> Vector {
         }
     }
     return current;
-}
-
-fn first_part(mut problem: Problem) -> i64 {
-    // First part takes ownership of the problem given
-    let mut pos = problem.robot.clone();
-
-    for vector in problem.moves.iter() {
-        pos = forward(&mut problem.map, &pos, vector);
-    }
-
-    let mut sum: i64 = 0;
-    for (i, line) in problem.map.iter().enumerate() {
-        for (j, cell) in line.iter().enumerate() {
-            if *cell == Cell::Box {
-                sum += 100 * (i as i64) + (j as i64);
-            }
-        }
-    }
-
-    return sum;
 }
 
 fn get_cell(map: &Vec<Vec<Cell>>, pos: &Vector) -> Cell {
@@ -336,7 +318,7 @@ fn move_rec(map: &mut Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) {
     }
 }
 
-fn forward2(map: &mut Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) -> Vector {
+fn forward_second(map: &mut Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) -> Vector {
     // Assumes that the cell in front of the robot is a box!
     // Returns the new position of the robot
 
@@ -360,17 +342,20 @@ fn forward2(map: &mut Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) -> Vector {
     return front;
 }
 
-fn second_part(mut problem: Problem) -> i64 {
+fn solve(
+    mut problem: Problem,
+    forward: fn(map: &mut Vec<Vec<Cell>>, pos: &Vector, dir: &Direction) -> Vector,
+) -> i64 {
     let mut pos = problem.robot.clone();
 
-    for dir in problem.moves.iter() {
-        pos = forward2(&mut problem.map, &pos, dir);
+    for vector in problem.moves.iter() {
+        pos = forward(&mut problem.map, &pos, vector);
     }
 
     let mut sum: i64 = 0;
     for (i, line) in problem.map.iter().enumerate() {
         for (j, cell) in line.iter().enumerate() {
-            if *cell == Cell::BoxLeft {
+            if *cell == Cell::Box || *cell == Cell::BoxLeft {
                 sum += 100 * (i as i64) + (j as i64);
             }
         }
