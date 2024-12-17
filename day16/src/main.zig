@@ -2,10 +2,6 @@
 
 const std = @import("std");
 
-const WALL = 0;
-const EMPTY = 1;
-const END = 2;
-
 const Tile = enum {
     WALL,
     EMPTY,
@@ -25,25 +21,6 @@ const Move = struct {
     dir: Direction,
     pos: Position,
     priority: usize,
-
-    fn debug(move: Move) void {
-        if (move.dir == Direction.NORTH) {
-            std.debug.print("North ({d} {d}) {d}\n", .{ move.pos.row, move.pos.col, move.priority });
-        } else if (move.dir == Direction.SOUTH) {
-            std.debug.print("South ({d} {d}) {d}\n", .{ move.pos.row, move.pos.col, move.priority });
-        } else if (move.dir == Direction.EAST) {
-            std.debug.print("East ({d} {d}) {d}\n", .{ move.pos.row, move.pos.col, move.priority });
-        } else if (move.dir == Direction.WEST) {
-            std.debug.print("West ({d} {d}) {d}\n", .{ move.pos.row, move.pos.col, move.priority });
-        }
-    }
-};
-
-const MoveFrom = struct {
-    dir: Direction,
-    pos: Position,
-    priority: usize,
-    from: Move,
 
     fn debug(move: Move) void {
         if (move.dir == Direction.NORTH) {
@@ -160,8 +137,8 @@ pub fn main() !void {
 
     std.debug.print("First part: {d}\n", .{result});
 
-    // const result2 = try second_part(problem, allocator);
-    // std.debug.print("Second part: {d}\n", .{result2});
+    const result2 = try second_part(problem, allocator, result);
+    std.debug.print("Second part: {d}\n", .{result2});
 
     allocator.free(problem.array);
 }
@@ -185,67 +162,24 @@ fn next_position(pos: Position, dir: Direction) Position {
     return Position{ .row = 0, .col = 0 };
 }
 
-const Checked = struct {
-    north: bool,
-    south: bool,
-    east: bool,
-    west: bool,
-};
-
-fn is_checked(p: Problem, visited: []Checked, move: Move) bool {
-    if (move.dir == Direction.NORTH) {
-        return visited[move.pos.row * p.size + move.pos.col].north;
-    } else if (move.dir == Direction.SOUTH) {
-        return visited[move.pos.row * p.size + move.pos.col].south;
-    } else if (move.dir == Direction.EAST) {
-        return visited[move.pos.row * p.size + move.pos.col].east;
-    } else if (move.dir == Direction.WEST) {
-        return visited[move.pos.row * p.size + move.pos.col].west;
-    }
-    return false;
-}
-
-fn set_checked(p: Problem, visited: []Checked, move: Move) void {
-    if (move.dir == Direction.NORTH) {
-        visited[move.pos.row * p.size + move.pos.col].north = true;
-    } else if (move.dir == Direction.SOUTH) {
-        visited[move.pos.row * p.size + move.pos.col].south = true;
-    } else if (move.dir == Direction.EAST) {
-        visited[move.pos.row * p.size + move.pos.col].east = true;
-    } else if (move.dir == Direction.WEST) {
-        visited[move.pos.row * p.size + move.pos.col].west = true;
-    }
-}
-
 const TileDistance = struct {
-    north: u64,
-    south: u64,
-    east: u64,
-    west: u64,
+    vertical: u64,
+    horizontal: u64,
 };
 
 fn get_tile_distance(p: Problem, distances: []TileDistance, pos: Position, dir: Direction) u64 {
-    if (dir == Direction.NORTH) {
-        return distances[pos.row * p.size + pos.col].north;
-    } else if (dir == Direction.SOUTH) {
-        return distances[pos.row * p.size + pos.col].south;
-    } else if (dir == Direction.EAST) {
-        return distances[pos.row * p.size + pos.col].east;
-    } else if (dir == Direction.WEST) {
-        return distances[pos.row * p.size + pos.col].west;
+    if ((dir == Direction.NORTH) or (dir == Direction.SOUTH)) {
+        return distances[pos.row * p.size + pos.col].vertical;
+    } else {
+        return distances[pos.row * p.size + pos.col].horizontal;
     }
-    return 0;
 }
 
 fn set_tile_distance(p: Problem, distances: []TileDistance, pos: Position, dir: Direction, value: u64) void {
-    if (dir == Direction.NORTH) {
-        distances[pos.row * p.size + pos.col].north = value;
-    } else if (dir == Direction.SOUTH) {
-        distances[pos.row * p.size + pos.col].south = value;
-    } else if (dir == Direction.EAST) {
-        distances[pos.row * p.size + pos.col].east = value;
-    } else if (dir == Direction.WEST) {
-        distances[pos.row * p.size + pos.col].west = value;
+    if ((dir == Direction.NORTH) or (dir == Direction.SOUTH)) {
+        distances[pos.row * p.size + pos.col].vertical = value;
+    } else {
+        distances[pos.row * p.size + pos.col].horizontal = value;
     }
 }
 
@@ -254,14 +188,13 @@ pub fn first_part(p: Problem, allocator: std.mem.Allocator) !u64 {
     var pq = PriorityQueue.init(allocator, {});
     defer pq.deinit();
 
-    var distances = try allocator.alloc(TileDistance, p.size * p.size);
-    defer allocator.free(distances);
     const maxi = 1e9;
+    const distances = try allocator.alloc(TileDistance, p.size * p.size);
+    defer allocator.free(distances);
     for (distances) |*d| {
-        d.* = TileDistance{ .north = maxi, .south = maxi, .east = maxi, .west = maxi };
+        d.* = TileDistance{ .vertical = maxi, .horizontal = maxi };
     }
 
-    distances[p.start.row * p.size + p.start.col] = TileDistance{ .north = maxi, .south = maxi, .east = maxi, .west = maxi };
     const start_move = Move{ .dir = Direction.EAST, .pos = p.start, .priority = 0 };
     try pq.add(start_move);
 
@@ -270,7 +203,7 @@ pub fn first_part(p: Problem, allocator: std.mem.Allocator) !u64 {
         const current_dist = current.priority;
 
         const distance = get_tile_distance(p, distances, current.pos, current.dir);
-        if (current_dist >= distance) {
+        if (current_dist > distance) {
             continue;
         }
         set_tile_distance(p, distances, current.pos, current.dir, current_dist);
@@ -296,4 +229,90 @@ pub fn first_part(p: Problem, allocator: std.mem.Allocator) !u64 {
     }
     std.debug.print("No path found\n", .{});
     return 0;
+}
+
+const MoveFrom = struct {
+    dir: Direction,
+    pos: Position,
+    priority: u64,
+    path: std.ArrayList(Position),
+};
+
+fn compareFnFrom(context: void, a: MoveFrom, b: MoveFrom) std.math.Order {
+    _ = context;
+    // Flip for min heap
+    return std.math.order(a.priority, b.priority);
+}
+
+pub fn second_part(p: Problem, allocator: std.mem.Allocator, optimal: u64) !u64 {
+    const PriorityQueue = std.PriorityQueue(MoveFrom, void, compareFnFrom);
+    var pq = PriorityQueue.init(allocator, {});
+    defer pq.deinit();
+
+    const distances = try allocator.alloc(TileDistance, p.size * p.size);
+    defer allocator.free(distances);
+
+    const maxi = 1e9;
+    for (distances) |*d| {
+        d.* = TileDistance{ .vertical = maxi, .horizontal = maxi };
+    }
+
+    var uniques = std.AutoHashMap(Position, void).init(allocator);
+
+    var current = MoveFrom{ .dir = Direction.EAST, .pos = p.start, .priority = 0, .path = std.ArrayList(Position).init(allocator) };
+    try pq.add(current);
+
+    while (pq.count() > 0) {
+        current = pq.remove();
+        const dist = current.priority;
+        try current.path.append(current.pos);
+
+        if (dist > get_tile_distance(p, distances, current.pos, current.dir)) {
+            current.path.deinit();
+            continue;
+        }
+        if (dist > optimal) {
+            current.path.deinit();
+            continue;
+        }
+
+        if (p.get(current.pos) == Tile.END) {
+            const ancestors = current.path;
+            for (ancestors.items) |ancestor| {
+                try uniques.put(ancestor, void{});
+            }
+            current.path.deinit();
+            continue;
+        }
+
+        const directions = [4]Direction{ Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST };
+
+        // Scan all directions. If it's the same, move forward, otherwise turn
+        for (directions) |dir| {
+            var next = current.pos;
+
+            var new_dist = current.priority + 1000;
+            if (current.dir == dir) {
+                next = next_position(current.pos, dir);
+                new_dist = current.priority + 1;
+            }
+
+            if ((p.get(next) == Tile.WALL) or (new_dist > get_tile_distance(p, distances, next, dir))) {
+                continue;
+            }
+            set_tile_distance(p, distances, next, dir, new_dist);
+
+            // Deep copy, otherwise the path will be shared between all moves
+            var path_copy = std.ArrayList(Position).init(allocator);
+            for (current.path.items) |pos| {
+                try path_copy.append(pos);
+            }
+            try current.path.append(next);
+
+            const next_move = MoveFrom{ .dir = dir, .pos = next, .priority = new_dist, .path = path_copy };
+            try pq.add(next_move);
+        }
+    }
+
+    return uniques.count();
 }
