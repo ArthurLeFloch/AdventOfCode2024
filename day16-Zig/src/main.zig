@@ -212,7 +212,7 @@ pub fn first_part(p: Problem, allocator: std.mem.Allocator) !u64 {
             return current_dist;
         }
 
-        // Add the potential next moves
+        // Add potential next moves
         const next = next_position(current.pos, current.dir);
         if (p.get(next) != Tile.WALL) { // Small penalty for moving forward
             try pq.add(Move{ .dir = current.dir, .pos = next, .priority = current_dist + 1 });
@@ -240,7 +240,6 @@ const MoveFrom = struct {
 
 fn compareFnFrom(context: void, a: MoveFrom, b: MoveFrom) std.math.Order {
     _ = context;
-    // Flip for min heap
     return std.math.order(a.priority, b.priority);
 }
 
@@ -287,7 +286,7 @@ pub fn second_part(p: Problem, allocator: std.mem.Allocator, optimal: u64) !u64 
 
         const directions = [4]Direction{ Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST };
 
-        // Scan all directions. If it's the same, move forward, otherwise turn
+        // Scan all directions. Same: move forward, otherwise turn
         for (directions) |dir| {
             var next = current.pos;
 
@@ -302,7 +301,7 @@ pub fn second_part(p: Problem, allocator: std.mem.Allocator, optimal: u64) !u64 
             }
             set_tile_distance(p, distances, next, dir, new_dist);
 
-            // Deep copy, otherwise the path will be shared between all moves
+            // Deep copy, to avoid sharing it by reference
             var path_copy = std.ArrayList(Position).init(allocator);
             for (current.path.items) |pos| {
                 try path_copy.append(pos);
