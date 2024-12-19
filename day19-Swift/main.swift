@@ -12,18 +12,12 @@ func parseInput(filePath: String) -> ([String], [String]) {
 }
 
 func firstPart(parts: [String], words: [String]) -> Int {
-	var regex = "("
-	for part in parts {
-		regex += part + "|"
-	}
-	regex.removeLast()
-	regex += ")*"
-
-	let actualRegex = try! Regex(regex)
+	let regexString = "(" + parts.joined(separator: "|") + ")*"
+	let regex = try! Regex(regexString)
 
 	var sum = 0
 	for word in words {
-		if try! actualRegex.wholeMatch(in: String(word)) != nil {
+		if try! regex.wholeMatch(in: String(word)) != nil {
 			sum += 1
 		}
 	}
@@ -32,30 +26,26 @@ func firstPart(parts: [String], words: [String]) -> Int {
 }
 
 func secondPart(parts: [String], words: [String]) -> Int {
-	var cache = [String: Int]()
+	let cache = NSCache<NSString, NSNumber>()
 
 	func countPossibilities(word: String) -> Int {
-		if let cached = cache[word] {
-			return cached
+		if let cached = cache.object(forKey: word as NSString) {
+			return cached.intValue
 		}
-		if word.count == 0 {
+		if word.isEmpty {
 			return 1
 		}
 
-		var sum = 0
 		// Make a choice among the available parts
-		for part in parts {
-			if word.count < part.count {
-				continue
+		let sum = parts.reduce(0) { sum, part in
+			guard word.count >= part.count, word.hasPrefix(part) else {
+				return sum
 			}
 
 			// If word[index...] starts with part, we can continue
-			let startIndex = word.index(word.startIndex, offsetBy: part.count)
-			if word.hasPrefix(part) {
-				sum += countPossibilities(word: String(word[startIndex...]))
-			}
+			return sum + countPossibilities(word: String(word.dropFirst(part.count)))
 		}
-		cache[word] = sum
+		cache.setObject(NSNumber(value: sum), forKey: word as NSString)
 		return sum
 	}
 
