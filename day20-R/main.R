@@ -1,3 +1,5 @@
+# Day 20: Race Condition
+
 parse_input <- function(file_path) {
   lines <- readLines(file_path, warn = FALSE)
   size <- length(lines)
